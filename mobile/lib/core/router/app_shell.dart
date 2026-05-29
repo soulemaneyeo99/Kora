@@ -26,7 +26,7 @@ class AppShell extends StatelessWidget {
     NavigationDestination(
       icon: Icon(Icons.people_outline_rounded),
       selectedIcon: Icon(Icons.people_rounded),
-      label: 'Communauté',
+      label: 'Amis',
     ),
     NavigationDestination(
       icon: Icon(Icons.person_outline_rounded),

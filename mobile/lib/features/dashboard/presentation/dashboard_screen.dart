@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/format/money.dart';
 import '../../../core/theme/kora_colors.dart';
@@ -10,13 +11,34 @@ import '../../../shared/widgets/async_value_view.dart';
 import '../../../shared/widgets/coach_card.dart';
 import '../../../shared/widgets/score_ring.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../insights/presentation/daily_tip_card.dart';
+import '../../transactions/domain/transaction.dart';
+import '../../transactions/presentation/add_transaction_sheet.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/dashboard_models.dart';
 
-/// Onglet Accueil — dashboard principal (CDC F06) : header, solde estimé,
-/// score animé, répartition des dépenses, conseil du jour.
+/// Onglet Accueil — dashboard principal (CDC F06) : header, solde estime,
+/// score anime, repartition des depenses, conseil du jour.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
+
+  Future<void> _openAddSheet(BuildContext context, WidgetRef ref,
+      {TxKind initial = TxKind.expense}) async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(KoraSpacing.radiusXl)),
+      ),
+      builder: (_) => AddTransactionSheet(initialKind: initial),
+    );
+    if (created == true) {
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(disciplineScoreProvider);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +47,13 @@ class DashboardScreen extends ConsumerWidget {
     final user = ref.watch(authControllerProvider).user;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: KoraColors.greenPrimary,
+        foregroundColor: KoraColors.white,
+        onPressed: () => _openAddSheet(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Transaction'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           color: KoraColors.greenActive,
@@ -37,32 +66,60 @@ class DashboardScreen extends ConsumerWidget {
             ]);
           },
           child: ListView(
-            padding: const EdgeInsets.all(KoraSpacing.pagePadding),
+            padding: const EdgeInsets.fromLTRB(
+              KoraSpacing.pagePadding,
+              KoraSpacing.pagePadding,
+              KoraSpacing.pagePadding,
+              96, // espace pour le FAB
+            ),
             children: [
               _Header(name: user?.greetingName ?? 'champion'),
               const SizedBox(height: KoraSpacing.lg),
               AsyncValueView(
                 value: summary,
                 onRetry: () => ref.invalidate(dashboardSummaryProvider),
-                data: (s) => _BalanceCard(summary: s),
+                data: (s) => _BalanceCard(
+                  summary: s,
+                  onTapIncome: () => context.push(
+                    '/transactions',
+                    extra: {'kind': TxKind.income},
+                  ),
+                  onTapExpense: () => context.push(
+                    '/transactions',
+                    extra: {'kind': TxKind.expense},
+                  ),
+                  onTapSavings: () => context.go('/goals'),
+                  onTapAll: () => context.push('/transactions'),
+                ),
               ),
               const SizedBox(height: KoraSpacing.md),
               AsyncValueView(
                 value: score,
                 onRetry: () => ref.invalidate(disciplineScoreProvider),
-                data: (s) => _ScoreCard(score: s),
+                data: (s) => _ScoreCard(
+                  score: s,
+                  hasData: summary.maybeWhen(
+                    data: (sm) => sm.currentPeriod.transactionsCount > 0,
+                    orElse: () => false,
+                  ),
+                ),
               ),
               const SizedBox(height: KoraSpacing.md),
               summary.maybeWhen(
-                data: (s) => _ExpensesCard(summary: s),
+                data: (s) => _ExpensesCard(
+                  summary: s,
+                  onAddExpense: () => _openAddSheet(context, ref),
+                ),
                 orElse: () => const SizedBox.shrink(),
               ),
+              const SizedBox(height: KoraSpacing.md),
+              const DailyTipCard(),
               const SizedBox(height: KoraSpacing.md),
               score.maybeWhen(
                 data: (s) => CoachCard(
                   message: s.insights.isNotEmpty
                       ? s.insights.first
-                      : 'Chaque petit pas compte. Continue comme ça !',
+                      : 'Chaque petit pas compte. Continue comme ca !',
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
@@ -101,52 +158,69 @@ class _Header extends StatelessWidget {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.summary});
+  const _BalanceCard({
+    required this.summary,
+    required this.onTapIncome,
+    required this.onTapExpense,
+    required this.onTapSavings,
+    required this.onTapAll,
+  });
   final DashboardSummary summary;
+  final VoidCallback onTapIncome;
+  final VoidCallback onTapExpense;
+  final VoidCallback onTapSavings;
+  final VoidCallback onTapAll;
 
   @override
   Widget build(BuildContext context) {
     final c = summary.currentPeriod;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(KoraSpacing.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Solde estimé du mois', style: KoraType.fieldLabel()),
-            const SizedBox(height: KoraSpacing.micro),
-            Text(Money.format(summary.estimatedBalanceXof),
-                style: KoraType.moneyLarge(
-                  color: summary.estimatedBalanceXof >= 0
-                      ? KoraColors.greenPrimary
-                      : KoraColors.red,
-                )),
-            const SizedBox(height: KoraSpacing.md),
-            Row(
-              children: [
-                _MiniStat(
-                  icon: Icons.south_west_rounded,
-                  label: 'Entrées',
-                  value: Money.compact(c.incomeXof),
-                  color: KoraColors.greenActive,
-                ),
-                const SizedBox(width: KoraSpacing.md),
-                _MiniStat(
-                  icon: Icons.north_east_rounded,
-                  label: 'Sorties',
-                  value: Money.compact(c.expenseXof),
-                  color: KoraColors.gold,
-                ),
-                const SizedBox(width: KoraSpacing.md),
-                _MiniStat(
-                  icon: Icons.savings_rounded,
-                  label: 'Épargne',
-                  value: Money.compact(summary.savingsTotalXof),
-                  color: KoraColors.greenPrimary,
-                ),
-              ],
-            ),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(KoraSpacing.radiusLg),
+        onTap: onTapAll,
+        child: Padding(
+          padding: const EdgeInsets.all(KoraSpacing.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Solde estime du mois', style: KoraType.fieldLabel()),
+              const SizedBox(height: KoraSpacing.micro),
+              Text(Money.format(summary.estimatedBalanceXof),
+                  style: KoraType.moneyLarge(
+                    color: summary.estimatedBalanceXof >= 0
+                        ? KoraColors.greenPrimary
+                        : KoraColors.red,
+                  )),
+              const SizedBox(height: KoraSpacing.md),
+              Row(
+                children: [
+                  _MiniStat(
+                    icon: Icons.south_west_rounded,
+                    label: 'Entrees',
+                    value: Money.compact(c.incomeXof),
+                    color: KoraColors.greenActive,
+                    onTap: onTapIncome,
+                  ),
+                  const SizedBox(width: KoraSpacing.md),
+                  _MiniStat(
+                    icon: Icons.north_east_rounded,
+                    label: 'Sorties',
+                    value: Money.compact(c.expenseXof),
+                    color: KoraColors.gold,
+                    onTap: onTapExpense,
+                  ),
+                  const SizedBox(width: KoraSpacing.md),
+                  _MiniStat(
+                    icon: Icons.savings_rounded,
+                    label: 'Epargne',
+                    value: Money.compact(summary.savingsTotalXof),
+                    color: KoraColors.greenPrimary,
+                    onTap: onTapSavings,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -159,31 +233,41 @@ class _MiniStat extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    required this.onTap,
   });
   final IconData icon;
   final String label;
   final String value;
   final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: KoraSpacing.micro),
-          Text(value, style: KoraType.bodyStrong()),
-          Text(label, style: KoraType.caption()),
-        ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(KoraSpacing.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: KoraSpacing.xs),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(height: KoraSpacing.micro),
+              Text(value, style: KoraType.bodyStrong()),
+              Text(label, style: KoraType.caption()),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({required this.score});
+  const _ScoreCard({required this.score, required this.hasData});
   final DisciplineScore score;
+  final bool hasData;
 
   @override
   Widget build(BuildContext context) {
@@ -200,15 +284,22 @@ class _ScoreCard extends StatelessWidget {
                 children: [
                   Text('Score de discipline', style: KoraType.cardLabel()),
                   const SizedBox(height: KoraSpacing.xs),
-                  ...score.components.entries.take(4).map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(
-                            '${_componentLabel(e.key)} · ${e.value} pts',
-                            style: KoraType.caption(),
+                  if (!hasData)
+                    Text(
+                      'On commence ensemble : note tes premieres '
+                      'transactions, KORA apprend ton rythme.',
+                      style: KoraType.caption(),
+                    )
+                  else
+                    ...score.components.entries.take(4).map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              '${_componentLabel(e.key)} · ${e.value} pts',
+                              style: KoraType.caption(),
+                            ),
                           ),
                         ),
-                      ),
                 ],
               ),
             ),
@@ -219,17 +310,18 @@ class _ScoreCard extends StatelessWidget {
   }
 
   String _componentLabel(String key) => switch (key) {
-        'savings_rate' => 'Épargne',
+        'savings_rate' => 'Epargne',
         'tracking_regularity' => 'Suivi',
         'goal_progress' => 'Objectifs',
-        'impulse_control' => 'Contrôle',
+        'impulse_control' => 'Controle',
         _ => key,
       };
 }
 
 class _ExpensesCard extends StatelessWidget {
-  const _ExpensesCard({required this.summary});
+  const _ExpensesCard({required this.summary, required this.onAddExpense});
   final DashboardSummary summary;
+  final VoidCallback onAddExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -238,15 +330,34 @@ class _ExpensesCard extends StatelessWidget {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(KoraSpacing.cardPadding),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.pie_chart_outline_rounded,
-                  color: KoraColors.gray),
-              const SizedBox(width: KoraSpacing.sm),
-              Expanded(
-                child: Text(
-                  'Pas encore de dépenses ce mois. Ajoute-en pour voir la répartition.',
-                  style: KoraType.body(color: KoraColors.gray),
+              Row(
+                children: [
+                  const Icon(Icons.pie_chart_outline_rounded,
+                      color: KoraColors.gray),
+                  const SizedBox(width: KoraSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Pas encore de depenses ce mois.',
+                      style: KoraType.bodyStrong(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: KoraSpacing.xs),
+              Text(
+                'Ajoute ta premiere depense pour voir ou part ton argent.',
+                style: KoraType.caption(),
+              ),
+              const SizedBox(height: KoraSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: onAddExpense,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Ajouter'),
                 ),
               ),
             ],
@@ -269,7 +380,7 @@ class _ExpensesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Où part ton argent', style: KoraType.cardLabel()),
+            Text('Ou part ton argent', style: KoraType.cardLabel()),
             const SizedBox(height: KoraSpacing.md),
             Row(
               children: [

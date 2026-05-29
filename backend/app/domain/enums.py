@@ -50,3 +50,21 @@ class PaymentProvider(str, Enum):
 
     CINETPAY = "cinetpay"
     LOGGING = "logging"  # dev only, ne facture jamais
+
+
+class IncomeBracket(str, Enum):
+    """Tranche de revenus mensuels declaree (CDC F02)."""
+
+    UNDER_80K = "under_80k"        # < 80 000 FCFA
+    K80_150 = "k80_150"            # 80-150k
+    K150_300 = "k150_300"          # 150-300k
+    OVER_300K = "over_300k"        # 300k+
+
+
+class PrimaryGoal(str, Enum):
+    """Objectif principal declare a l'onboarding (CDC F02)."""
+
+    SAVE = "save"                  # Epargner
+    PAY_BILLS = "pay_bills"        # Payer factures
+    BUY = "buy"                    # Acheter
+    BUSINESS = "business"          # Business

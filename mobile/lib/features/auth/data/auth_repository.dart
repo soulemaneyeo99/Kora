@@ -72,4 +72,36 @@ class AuthRepository {
       throw ApiException.fromDio(e);
     }
   }
+
+  /// GET /users/me — recharge le profil courant (utilise au bootstrap).
+  Future<KoraUser> fetchMe() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/users/me');
+      return KoraUser.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  /// PATCH /users/me — onboarding F02 + mise a jour du profil.
+  Future<KoraUser> updateMe({
+    String? displayName,
+    IncomeBracket? incomeBracket,
+    PrimaryGoal? primaryGoal,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        if (displayName != null) 'display_name': displayName,
+        if (incomeBracket != null) 'income_bracket': incomeBracket.apiValue,
+        if (primaryGoal != null) 'primary_goal': primaryGoal.apiValue,
+      };
+      final res = await _dio.patch<Map<String, dynamic>>(
+        '/users/me',
+        data: body,
+      );
+      return KoraUser.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
 }

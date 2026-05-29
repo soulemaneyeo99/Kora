@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.domain.enums import IncomeBracket, PrimaryGoal
+
 
 class OTPRequestIn(BaseModel):
     phone: str = Field(..., min_length=5, max_length=20, examples=["0712345678"])
@@ -28,6 +30,17 @@ class UserPublic(BaseModel):
     phone_e164: str
     display_name: str | None
     locale: str
+    income_bracket: IncomeBracket | None = None
+    primary_goal: PrimaryGoal | None = None
+    has_completed_onboarding: bool = False
+
+
+class UserUpdate(BaseModel):
+    """PATCH /users/me - tous les champs sont optionnels."""
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=80)
+    income_bracket: IncomeBracket | None = None
+    primary_goal: PrimaryGoal | None = None
 
 
 class TokenOut(BaseModel):

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/kora_colors.dart';
 import '../../../core/theme/kora_spacing.dart';
@@ -38,30 +39,39 @@ class ProfileScreen extends ConsumerWidget {
                     style: KoraType.h2())),
             if (user?.phoneE164 != null)
               Center(child: Text(user!.phoneE164, style: KoraType.caption())),
+            if (user?.primaryGoal != null) ...[
+              const SizedBox(height: KoraSpacing.xs),
+              Center(
+                child: Text(
+                  '${user!.primaryGoal!.emoji}  Objectif : ${user.primaryGoal!.label}',
+                  style: KoraType.caption(),
+                ),
+              ),
+            ],
             const SizedBox(height: KoraSpacing.xl),
             _Tile(
               icon: Icons.workspace_premium_rounded,
               title: 'Abonnement',
               subtitle: 'Freemium — passe en Premium quand tu veux',
-              onTap: () {},
+              onTap: () => context.push('/profile/premium'),
             ),
             _Tile(
               icon: Icons.military_tech_rounded,
               title: 'Mes badges',
               subtitle: 'Débloque-les par tes actions',
-              onTap: () {},
+              onTap: () => context.push('/profile/badges'),
             ),
             _Tile(
-              icon: Icons.notifications_none_rounded,
-              title: 'Notifications',
-              subtitle: 'Choisis ce que KORA t\'envoie',
-              onTap: () {},
+              icon: Icons.school_outlined,
+              title: 'Apprendre',
+              subtitle: '6 modules pour mieux gérer ton argent',
+              onTap: () => context.push('/profile/learn'),
             ),
             _Tile(
               icon: Icons.shield_outlined,
               title: 'Sécurité & confidentialité',
               subtitle: 'KORA lit seulement — jamais d\'accès à ton argent',
-              onTap: () {},
+              onTap: () => _showPrivacyDialog(context),
             ),
             const SizedBox(height: KoraSpacing.lg),
             OutlinedButton.icon(
@@ -76,9 +86,56 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: KoraSpacing.xl),
             const Center(child: KoraLogo(size: 40)),
             const SizedBox(height: KoraSpacing.xs),
-            Center(child: Text('Version 0.1.0', style: KoraType.caption())),
+            Center(child: Text('Version 0.1.2', style: KoraType.caption())),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showPrivacyDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Sécurité & confidentialité', style: KoraType.h2()),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '• KORA ne touche jamais à ton argent. Aucun virement, aucun retrait.',
+                style: KoraType.body(),
+              ),
+              const SizedBox(height: KoraSpacing.sm),
+              Text(
+                '• Ton mot de passe mobile money n\'est jamais demandé.',
+                style: KoraType.body(),
+              ),
+              const SizedBox(height: KoraSpacing.sm),
+              Text(
+                '• Les numéros de tes contacts sont anonymisés (SHA-256) avant tout stockage.',
+                style: KoraType.body(),
+              ),
+              const SizedBox(height: KoraSpacing.sm),
+              Text(
+                '• Le texte brut des SMS n\'est conservé que 7 jours maximum.',
+                style: KoraType.body(),
+              ),
+              const SizedBox(height: KoraSpacing.sm),
+              Text(
+                '• Tu peux supprimer ton compte à tout moment.',
+                style: KoraType.body(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('J\'ai compris'),
+          ),
+        ],
       ),
     );
   }
