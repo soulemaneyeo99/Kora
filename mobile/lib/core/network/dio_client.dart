@@ -11,11 +11,14 @@ Dio buildDio({
   required TokenStore tokenStore,
   required void Function() onUnauthorized,
 }) {
+  // Render free tier endort le service apres 15min : le premier appel apres
+  // sleep peut prendre 30-45s pour reveiller le container. On laisse de la
+  // marge sur les timeouts pour eviter une fausse alerte reseau a froid.
   final dio = Dio(
     BaseOptions(
       baseUrl: Env.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
+      connectTimeout: const Duration(seconds: 45),
+      receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
     ),
   );
