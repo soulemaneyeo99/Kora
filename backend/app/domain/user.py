@@ -25,11 +25,25 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     # Onboarding F02 - profil progressif (CDC chapitre 4.1).
+    # values_callable : SAEnum envoie par defaut le NOM de l'enum Python
+    # ("UNDER_80K"), mais la migration a cree l'enum Postgres avec les
+    # VALEURS ("under_80k"). Sans ce flag, tout PATCH /users/me leve un
+    # InvalidTextRepresentationError au flush.
     income_bracket: Mapped[IncomeBracket | None] = mapped_column(
-        SAEnum(IncomeBracket, name="income_bracket"), nullable=True
+        SAEnum(
+            IncomeBracket,
+            name="income_bracket",
+            values_callable=lambda e: [v.value for v in e],
+        ),
+        nullable=True,
     )
     primary_goal: Mapped[PrimaryGoal | None] = mapped_column(
-        SAEnum(PrimaryGoal, name="primary_goal"), nullable=True
+        SAEnum(
+            PrimaryGoal,
+            name="primary_goal",
+            values_callable=lambda e: [v.value for v in e],
+        ),
+        nullable=True,
     )
 
     @property
