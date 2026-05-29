@@ -68,6 +68,12 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => context.push('/profile/learn'),
             ),
             _Tile(
+              icon: Icons.sms_outlined,
+              title: 'Importer un SMS',
+              subtitle: 'Colle un SMS Wave / OM / MoMo, KORA le lit',
+              onTap: () => context.push('/sms-sim'),
+            ),
+            _Tile(
               icon: Icons.shield_outlined,
               title: 'Sécurité & confidentialité',
               subtitle: 'KORA lit seulement — jamais d\'accès à ton argent',
@@ -86,7 +92,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: KoraSpacing.xl),
             const Center(child: KoraLogo(size: 40)),
             const SizedBox(height: KoraSpacing.xs),
-            Center(child: Text('Version 0.1.2', style: KoraType.caption())),
+            Center(child: Text('Version 0.1.3', style: KoraType.caption())),
           ],
         ),
       ),

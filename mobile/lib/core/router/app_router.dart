@@ -14,6 +14,7 @@ import '../../features/insights/presentation/badges_screen.dart';
 import '../../features/learn/presentation/learn_screen.dart';
 import '../../features/premium/presentation/premium_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/sms_sim/presentation/sms_simulator_screen.dart';
 import '../../features/transactions/domain/transaction.dart';
 import '../../features/transactions/presentation/transactions_screen.dart';
 import 'app_shell.dart';
@@ -91,6 +92,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/learn',
         builder: (_, __) => const LearnScreen(),
+      ),
+      GoRoute(
+        path: '/sms-sim',
+        builder: (_, __) => const SmsSimulatorScreen(),
       ),
       StatefulShellRoute.indexedStack(
         parentNavigatorKey: _rootKey,
