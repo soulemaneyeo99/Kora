@@ -69,7 +69,9 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8001/api/v1
 flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8001/api/v1
 ```
 
-Par défaut (`Env.apiBaseUrl`) : `http://localhost:8001/api/v1`.
+Par défaut (`Env.apiBaseUrl`) : `https://kora-backend-17ws.onrender.com/api/v1` (backend prod Render).
+Un build release sans `--dart-define` pointe donc sur prod, jamais sur localhost.
+En dev local, override explicitement comme dans les exemples ci-dessus.
 
 ### OTP en développement
 

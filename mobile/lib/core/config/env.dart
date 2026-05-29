@@ -2,19 +2,19 @@ import 'package:flutter/foundation.dart';
 
 /// Configuration d'environnement, surchargée au build via --dart-define.
 ///
-/// Exemples :
-///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8001/api/v1
-///   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8001/api/v1
+/// Valeur par défaut = backend prod Render. Un APK release oublié sans
+/// `--dart-define` pointe donc sur prod, pas sur localhost (qui cassait
+/// l'app pour le client). En dev local, on override explicitement :
 ///
-/// Valeurs par défaut :
-///  - Web / desktop : localhost (le backend dev tourne sur le port 8001).
-///  - Émulateur Android : utiliser 10.0.2.2 (alias hôte) via --dart-define.
+///   flutter run --dart-define=API_BASE_URL=http://localhost:8001/api/v1
+///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8001/api/v1  # emu Android
+///   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8001/api/v1
 abstract final class Env {
   Env._();
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8001/api/v1',
+    defaultValue: 'https://kora-backend-17ws.onrender.com/api/v1',
   );
 
   /// En dev, le backend renvoie l'OTP dans la réponse si DEBUG_OTP=true.
