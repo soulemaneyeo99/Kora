@@ -1,0 +1,84 @@
+# ============================================================
+# Monorepo KORA — backend (Python/FastAPI) + mobile (Flutter)
+# ============================================================
+
+# Secrets — JAMAIS commit
+*.env
+.env
+.env.*
+!.env.example
+backend/.env
+mobile/.env
+
+# Cles signing & API
+api_keys.dart
+google-services.json
+key.properties
+*.jks
+*.keystore
+upload-keystore.jks
+
+# ---- Python / FastAPI ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Docker volumes
+backend/postgres_data/
+backend/redis_data/
+
+# ---- Flutter / Dart ----
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+mobile/build/
+mobile/.idea/
+mobile/.vscode/
+mobile/*.iml
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+
+# iOS (au cas où plus tard)
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/App.framework
+mobile/ios/Flutter/Flutter.framework
+mobile/ios/Runner/GeneratedPluginRegistrant.*
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- Claude Code local config ----
+.claude/
+
+# ---- Logs locaux ----
+*.log

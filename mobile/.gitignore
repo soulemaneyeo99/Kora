@@ -1,0 +1,21 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Platform (régénérées par `flutter create .`)
+# On les versionne normalement, mais elles n'existent pas encore ici.
+
+# OS
+.DS_Store
+Thumbs.db
