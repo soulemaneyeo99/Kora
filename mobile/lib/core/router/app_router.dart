@@ -65,6 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return OtpScreen(
             phone: extra['phone'] as String? ?? '',
             debugOtp: extra['debugOtp'] as String?,
+            demoMode: (extra['demoMode'] as bool?) ?? false,
           );
         },
       ),

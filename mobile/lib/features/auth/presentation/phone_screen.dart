@@ -45,6 +45,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
         'phone': phone,
         'expiresIn': result.expiresInSeconds,
         'debugOtp': result.debugOtp,
+        'demoMode': result.demoMode,
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
     debug_otp: bool = False
 
+    # Mode demo client : accepte n'importe quel code OTP 4-6 chiffres, code
+    # toujours "000000". Skip Redis et SMS provider. Activer en demo via
+    # AUTH_DEMO_MODE=true ; couper avant prod publique.
+    auth_demo_mode: bool = False
+
     database_url: str = Field(..., description="URL asyncpg Postgres")
     redis_url: str = Field(..., description="URL Redis (OTP + throttling)")
 

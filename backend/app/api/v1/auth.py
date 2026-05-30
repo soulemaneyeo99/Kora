@@ -51,9 +51,14 @@ async def request_otp(
     except OtpThrottled as e:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(e)) from e
     return OTPRequestOut(
-        message="Code envoye par SMS",
+        message=(
+            "Mode demo : utilisez le code 000000 (ou n'importe quel code 4-6 chiffres)"
+            if otp_service.demo_mode
+            else "Code envoye par SMS"
+        ),
         expires_in_seconds=result.expires_in_seconds,
         debug_otp=result.debug_code,
+        demo_mode=otp_service.demo_mode,
     )
 
 

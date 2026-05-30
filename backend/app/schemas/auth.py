@@ -16,6 +16,8 @@ class OTPRequestOut(BaseModel):
     expires_in_seconds: int
     # Expose uniquement si DEBUG_OTP=true. None en prod.
     debug_otp: str | None = None
+    # True quand AUTH_DEMO_MODE=true : le mobile peut alors auto-soumettre.
+    demo_mode: bool = False
 
 
 class OTPVerifyIn(BaseModel):

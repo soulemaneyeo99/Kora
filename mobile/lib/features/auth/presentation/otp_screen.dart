@@ -15,10 +15,15 @@ class OtpScreen extends ConsumerStatefulWidget {
     super.key,
     required this.phone,
     this.debugOtp,
+    this.demoMode = false,
   });
 
   final String phone;
   final String? debugOtp;
+
+  /// Backend en AUTH_DEMO_MODE : pré-remplit et soumet automatiquement
+  /// pour une connexion en un clic, même en build release.
+  final bool demoMode;
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -29,12 +34,19 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   bool _submitting = false;
   String? _error;
 
+  bool get _showDebugBanner =>
+      widget.demoMode || (Env.showDebugOtp && widget.debugOtp != null);
+
   @override
   void initState() {
     super.initState();
-    // En dev (DEBUG_OTP=true), on pré-remplit pour accélérer les tests.
-    if (Env.showDebugOtp && widget.debugOtp != null) {
+    // Mode démo (backend) OU dev (DEBUG_OTP=true) : pré-remplit.
+    if (widget.debugOtp != null && (widget.demoMode || Env.showDebugOtp)) {
       _controller.text = widget.debugOtp!;
+    }
+    // Mode démo : on soumet tout seul pour éviter toute friction.
+    if (widget.demoMode && _controller.text.length >= 4) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
     }
   }
 
@@ -80,7 +92,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 'Code à 6 chiffres envoyé au ${widget.phone}.',
                 style: KoraType.body(color: KoraColors.gray),
               ),
-              if (Env.showDebugOtp && widget.debugOtp != null) ...[
+              if (_showDebugBanner) ...[
                 const SizedBox(height: KoraSpacing.sm),
                 Container(
                   padding: const EdgeInsets.all(KoraSpacing.sm),
@@ -88,8 +100,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     color: KoraColors.goldPale,
                     borderRadius: BorderRadius.circular(KoraSpacing.radiusMd),
                   ),
-                  child: Text('Mode dev — code : ${widget.debugOtp}',
-                      style: KoraType.caption(color: KoraColors.night)),
+                  child: Text(
+                    widget.demoMode
+                        ? 'Mode démo — connexion automatique (code ${widget.debugOtp ?? "000000"})'
+                        : 'Mode dev — code : ${widget.debugOtp}',
+                    style: KoraType.caption(color: KoraColors.night),
+                  ),
                 ),
               ],
               const SizedBox(height: KoraSpacing.xl),

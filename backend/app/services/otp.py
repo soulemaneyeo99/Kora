@@ -30,6 +30,10 @@ THROTTLE_SECONDS = 60
 MAX_ATTEMPTS = 3
 CODE_LENGTH = 6
 
+# Code retourne en mode demo client. Affiche "000000" et accepte tout code
+# 4-6 chiffres. Permet une demo sans SMS ni Redis.
+DEMO_CODE = "000000"
+
 
 class OtpError(Exception):
     """Erreur metier OTP."""
@@ -77,12 +81,25 @@ class OtpService:
         redis_client: redis.Redis,
         sms_provider: SmsProvider,
         debug_expose: bool = False,
+        demo_mode: bool = False,
     ) -> None:
         self._redis = redis_client
         self._sms = sms_provider
         self._debug = debug_expose
+        self._demo_mode = demo_mode
+
+    @property
+    def demo_mode(self) -> bool:
+        return self._demo_mode
 
     async def issue(self, *, phone_e164: str) -> OtpIssueResult:
+        if self._demo_mode:
+            # Demo client : pas de Redis, pas de SMS, code public fixe.
+            return OtpIssueResult(
+                expires_in_seconds=OTP_TTL_SECONDS,
+                debug_code=DEMO_CODE,
+            )
+
         # Throttle SETNX : echoue si une demande recente existe deja
         was_set = await self._redis.set(
             _throttle_key(phone_e164), "1", nx=True, ex=THROTTLE_SECONDS
@@ -110,6 +127,13 @@ class OtpService:
 
     async def verify(self, *, phone_e164: str, code: str) -> None:
         """Verifie l'OTP. Consomme la cle si OK. Leve OtpError sinon."""
+        if self._demo_mode:
+            # Tout code 4-6 chiffres passe. Le format est deja borne par le
+            # schema Pydantic (OTPVerifyIn : min_length=4, max_length=8).
+            if not code.isdigit():
+                raise OtpInvalid("Code incorrect")
+            return
+
         key = _otp_key(phone_e164)
         raw = await self._redis.get(key)
         if raw is None:

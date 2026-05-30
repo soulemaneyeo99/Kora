@@ -38,6 +38,7 @@ def get_otp_service(redis_client: RedisDep, settings: SettingsDep) -> OtpService
         redis_client=redis_client,
         sms_provider=get_sms_provider(settings),
         debug_expose=settings.debug_otp,
+        demo_mode=settings.auth_demo_mode,
     )
 
 

@@ -11,11 +11,19 @@ final authRepositoryProvider = Provider<AuthRepository>(
 
 /// Résultat d'une demande d'OTP.
 class OtpRequestResult {
-  const OtpRequestResult({required this.expiresInSeconds, this.debugOtp});
+  const OtpRequestResult({
+    required this.expiresInSeconds,
+    this.debugOtp,
+    this.demoMode = false,
+  });
   final int expiresInSeconds;
 
-  /// Code renvoyé uniquement si le backend tourne avec DEBUG_OTP=true.
+  /// Code renvoyé uniquement si le backend tourne avec DEBUG_OTP=true,
+  /// ou en mode démo (toujours "000000").
   final String? debugOtp;
+
+  /// True quand le backend tourne en AUTH_DEMO_MODE : le mobile auto-soumet.
+  final bool demoMode;
 }
 
 /// Résultat d'une vérification d'OTP réussie.
@@ -46,6 +54,7 @@ class AuthRepository {
       return OtpRequestResult(
         expiresInSeconds: (data['expires_in_seconds'] as num).toInt(),
         debugOtp: data['debug_otp'] as String?,
+        demoMode: (data['demo_mode'] as bool?) ?? false,
       );
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
