@@ -82,3 +82,9 @@ Thumbs.db
 
 # ---- Logs locaux ----
 *.log
+
+# ---- Windows NTFS metadata ----
+*:Zone.Identifier
+
+# ---- Docs binaires non versionnees (CDC, maquettes) ----
+*.pdf

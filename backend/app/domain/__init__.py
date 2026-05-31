@@ -5,8 +5,10 @@ le detecte dans Base.metadata.
 """
 from app.domain.base import Base
 from app.domain.category import Category
+from app.domain.device_token import DeviceToken
 from app.domain.enums import (
     CategoryKind,
+    DevicePlatform,
     GoalStatus,
     PaymentProvider,
     PaymentStatus,
@@ -23,6 +25,8 @@ __all__ = [
     "Base",
     "Category",
     "CategoryKind",
+    "DevicePlatform",
+    "DeviceToken",
     "Goal",
     "GoalStatus",
     "Payment",

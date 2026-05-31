@@ -68,6 +68,12 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => context.push('/profile/learn'),
             ),
             _Tile(
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              subtitle: 'Conseil du jour, rappels objectifs',
+              onTap: () => context.push('/profile/notifications'),
+            ),
+            _Tile(
               icon: Icons.sms_outlined,
               title: 'Importer un SMS',
               subtitle: 'Colle un SMS Wave / OM / MoMo, KORA le lit',
@@ -92,7 +98,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: KoraSpacing.xl),
             const Center(child: KoraLogo(size: 40)),
             const SizedBox(height: KoraSpacing.xs),
-            Center(child: Text('Version 0.1.3', style: KoraType.caption())),
+            Center(child: Text('Version 0.1.4', style: KoraType.caption())),
           ],
         ),
       ),

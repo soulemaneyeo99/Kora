@@ -1,7 +1,14 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/token_store.dart';
 import '../../../core/providers.dart';
+import '../../notifications/application/notification_service.dart';
+import '../../notifications/data/notification_prefs.dart';
+import '../../notifications/data/notifications_repository.dart';
 import '../data/auth_repository.dart';
 import '../domain/kora_user.dart';
 
@@ -43,6 +50,11 @@ final authControllerProvider =
 class AuthController extends Notifier<AuthState> {
   late final TokenStore _tokenStore = ref.read(tokenStoreProvider);
   AuthRepository get _repo => ref.read(authRepositoryProvider);
+  NotificationsRepository get _notifRepo =>
+      ref.read(notificationsRepositoryProvider);
+  NotificationService get _notifService =>
+      ref.read(notificationServiceProvider);
+  NotificationPrefs get _notifPrefs => ref.read(notificationPrefsProvider);
 
   @override
   AuthState build() {
@@ -62,9 +74,33 @@ class AuthController extends Notifier<AuthState> {
     try {
       final user = await _repo.fetchMe();
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      // best-effort : re-register device + reprogramme conseil quotidien
+      // a chaque demarrage (idempotent cote backend et plugin local).
+      unawaited(_postLoginHook());
     } catch (_) {
       await _tokenStore.clear();
       state = const AuthState(status: AuthStatus.unauthenticated);
+    }
+  }
+
+  /// Effets de bord post-connexion : permission, register device, schedule.
+  /// Best-effort : aucune erreur ne doit casser le flux d'auth.
+  Future<void> _postLoginHook() async {
+    try {
+      final granted = await _notifService.requestPermissionIfNeeded();
+      if (!granted) return;
+      final deviceId = await _notifPrefs.deviceId();
+      final platform = kIsWeb
+          ? 'web'
+          : (Platform.isIOS ? 'ios' : 'android');
+      await _notifRepo.registerDevice(
+        token: deviceId,
+        platform: platform,
+        label: state.user?.displayName,
+      );
+      await _notifService.rescheduleDailyTip();
+    } catch (_) {
+      // notif optionnelle : ne jamais bloquer l'auth.
     }
   }
 
@@ -79,6 +115,7 @@ class AuthController extends Notifier<AuthState> {
       expiresAt: session.expiresAt,
     );
     state = AuthState(status: AuthStatus.authenticated, user: session.user);
+    unawaited(_postLoginHook());
   }
 
   /// PATCH /users/me + mise a jour de l'etat (onboarding F02, edit profil).
@@ -97,6 +134,7 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> logout() async {
     await _tokenStore.clear();
+    await _notifService.cancelAll();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
@@ -104,6 +142,7 @@ class AuthController extends Notifier<AuthState> {
   void onSessionExpired() {
     if (state.status == AuthStatus.authenticated) {
       _tokenStore.clear();
+      _notifService.cancelAll();
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }

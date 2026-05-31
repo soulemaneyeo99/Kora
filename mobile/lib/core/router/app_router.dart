@@ -12,6 +12,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/goals/presentation/goals_screen.dart';
 import '../../features/insights/presentation/badges_screen.dart';
 import '../../features/learn/presentation/learn_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/premium/presentation/premium_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/sms_sim/presentation/sms_simulator_screen.dart';
@@ -93,6 +94,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/learn',
         builder: (_, __) => const LearnScreen(),
+      ),
+      GoRoute(
+        path: '/profile/notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
       GoRoute(
         path: '/sms-sim',

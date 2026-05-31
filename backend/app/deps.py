@@ -13,9 +13,11 @@ from app.core.security import decode_access_token
 from app.db import get_db
 from app.domain.user import User
 from app.services.ingestion import IngestionService
+from app.services.notifications import NotificationService
 from app.services.otp import OtpService
 from app.services.parsers import get_default_registry
 from app.services.payment_provider import PaymentProvider, get_payment_provider
+from app.services.push_provider import get_push_provider
 from app.services.sms_provider import get_sms_provider
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -57,6 +59,15 @@ def get_payment_provider_dep(settings: SettingsDep) -> PaymentProvider:
 
 
 PaymentProviderDep = Annotated[PaymentProvider, Depends(get_payment_provider_dep)]
+
+
+def get_notification_service(settings: SettingsDep) -> NotificationService:
+    return NotificationService(push_provider=get_push_provider(settings))
+
+
+NotificationServiceDep = Annotated[
+    NotificationService, Depends(get_notification_service)
+]
 
 
 async def get_current_user(

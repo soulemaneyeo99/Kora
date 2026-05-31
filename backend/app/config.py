@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     # ---- Commission KORA --------------------------------------------------
     commission_rate: float = 0.005  # 0,5%
 
+    # ---- Push notifications (vide = LoggingPushProvider en dev) ----------
+    # JSON brut du service account Firebase (champ "client_email", "private_key",
+    # "project_id"). Si vide -> notifs juste loggees, pas envoyees. Permet de
+    # deployer KORA sans Firebase puis brancher quand pret.
+    fcm_service_account_json: str = ""
+
     # ---- CinetPay (vide = LoggingPaymentProvider en dev) -------------------
     cinetpay_api_key: str = ""
     cinetpay_site_id: str = ""

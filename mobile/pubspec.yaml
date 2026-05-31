@@ -1,7 +1,7 @@
 name: kora
 description: "KORA Finance — coaching financier comportemental (Côte d'Ivoire)."
 publish_to: "none"
-version: 0.1.3+4
+version: 0.1.4+5
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -32,6 +32,16 @@ dependencies:
 
   # Graphiques camembert / barres (dashboard + analyse)
   fl_chart: ^0.69.2
+
+  # Notifications locales (conseil du jour, rappels objectifs).
+  # Fonctionne sans Firebase, hors-ligne. Suffisant pour le MVP CDC F11.
+  flutter_local_notifications: ^17.2.3
+  # Timezones pour planifier les rappels recurrents.
+  timezone: ^0.9.4
+  # Permissions runtime Android 13+ (POST_NOTIFICATIONS).
+  permission_handler: ^11.3.1
+  # Device-id stable persiste localement (pour register au backend).
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

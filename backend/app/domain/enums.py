@@ -68,3 +68,11 @@ class PrimaryGoal(str, Enum):
     PAY_BILLS = "pay_bills"        # Payer factures
     BUY = "buy"                    # Acheter
     BUSINESS = "business"          # Business
+
+
+class DevicePlatform(str, Enum):
+    """Plateforme du device pour les push notifications."""
+
+    ANDROID = "android"
+    IOS = "ios"
+    WEB = "web"
