@@ -21,14 +21,24 @@ DEVICE_PLATFORM_VALUES = ("android", "ios", "web")
 
 
 def upgrade() -> None:
-    device_platform = sa.Enum(*DEVICE_PLATFORM_VALUES, name="device_platform")
-    device_platform.create(op.get_bind(), checkfirst=True)
+    # 1) Cree le type enum si absent. checkfirst evite l'erreur si un deploy
+    #    precedent l'a deja cree (cas Render redeploy avec migration partielle).
+    bind = op.get_bind()
+    sa.Enum(*DEVICE_PLATFORM_VALUES, name="device_platform").create(
+        bind, checkfirst=True
+    )
 
+    # 2) Cree la table en referençant l'enum SANS retenter le CREATE TYPE.
+    #    Sans create_type=False, SQLAlchemy relance un CREATE TYPE et explose
+    #    sur DuplicateObjectError.
+    platform_col = sa.Enum(
+        *DEVICE_PLATFORM_VALUES, name="device_platform", create_type=False
+    )
     op.create_table(
         "device_tokens",
         sa.Column("user_id", sa.Uuid(), nullable=False),
         sa.Column("token", sa.String(length=512), nullable=False),
-        sa.Column("platform", device_platform, nullable=False),
+        sa.Column("platform", platform_col, nullable=False),
         sa.Column("label", sa.String(length=80), nullable=True),
         sa.Column("locale", sa.String(length=10), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
