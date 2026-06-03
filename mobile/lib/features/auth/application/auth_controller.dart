@@ -87,13 +87,24 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
     try {
-      final user = await _repo.fetchMe();
+      // Timeout dur : si le backend dort (Render free 30-45s) ou si la
+      // connexion est mauvaise, on ne reste pas indefiniment sur le splash.
+      // Le splash a son propre bouton "Reessayer" qui invalide le controller.
+      final user =
+          await _repo.fetchMe().timeout(const Duration(seconds: 20));
       state = AuthState(
         status: AuthStatus.authenticated,
         user: user,
         introSeen: introSeen,
       );
       unawaited(_postLoginHook());
+    } on TimeoutException {
+      // On garde le token : c'est probablement un cold start, pas une
+      // session expiree. L'utilisateur peut Reessayer depuis le splash.
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        introSeen: introSeen,
+      );
     } catch (_) {
       await _tokenStore.clear();
       state = AuthState(
