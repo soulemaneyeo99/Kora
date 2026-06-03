@@ -12,3 +12,13 @@ final dailyTipProvider = FutureProvider.autoDispose<DailyTip>(
 final badgesProvider = FutureProvider.autoDispose<List<KoraBadge>>(
   (ref) => ref.watch(insightsRepositoryProvider).fetchKoraBadges(),
 );
+
+/// Prochaine action recommandee par KORA (carte unique sur le dashboard).
+final nextActionProvider = FutureProvider.autoDispose<NextAction>(
+  (ref) => ref.watch(insightsRepositoryProvider).fetchNextAction(),
+);
+
+/// Prevision de fin de mois (extrapolation lineaire des depenses).
+final forecastProvider = FutureProvider.autoDispose<EndOfMonthForecast>(
+  (ref) => ref.watch(insightsRepositoryProvider).fetchForecast(),
+);

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/auth/presentation/intro_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/otp_screen.dart';
 import '../../features/auth/presentation/phone_screen.dart';
@@ -40,24 +41,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final inAuth = loc.startsWith('/auth');
       final inSplash = loc == '/splash';
+      final inIntro = loc == '/intro';
       final inOnboarding = loc == '/onboarding';
 
       // Session pas encore restaurée : on reste sur le splash.
       if (!auth.isKnown) return inSplash ? null : '/splash';
 
-      if (!auth.isAuthenticated) return inAuth ? null : '/auth';
+      if (!auth.isAuthenticated) {
+        // Pas encore vu l'intro : on force le passage par /intro.
+        if (!auth.introSeen) return inIntro ? null : '/intro';
+        return inAuth ? null : '/auth';
+      }
 
       // Authentifie : on filtre par etat onboarding.
       if (auth.onboardingStatus == OnboardingStatus.needed) {
         return inOnboarding ? null : '/onboarding';
       }
 
-      // Onboarding complete : on sort du splash / de l'auth / de l'onboarding.
-      if (inSplash || inAuth || inOnboarding) return '/home';
+      // Onboarding complete : on sort du splash / intro / auth / onboarding.
+      if (inSplash || inIntro || inAuth || inOnboarding) return '/home';
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/intro', builder: (_, __) => const IntroScreen()),
       GoRoute(path: '/auth', builder: (_, __) => const PhoneScreen()),
       GoRoute(
         path: '/auth/otp',

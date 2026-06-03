@@ -88,3 +88,6 @@ Thumbs.db
 
 # ---- Docs binaires non versionnees (CDC, maquettes) ----
 *.pdf
+
+# ---- Builds APK (livres hors git, trop lourd) ----
+*.apk

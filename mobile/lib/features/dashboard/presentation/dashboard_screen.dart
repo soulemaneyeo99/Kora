@@ -11,7 +11,10 @@ import '../../../shared/widgets/async_value_view.dart';
 import '../../../shared/widgets/coach_card.dart';
 import '../../../shared/widgets/score_ring.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../insights/application/insights_providers.dart';
 import '../../insights/presentation/daily_tip_card.dart';
+import '../../insights/presentation/forecast_card.dart';
+import '../../insights/presentation/next_action_card.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/presentation/add_transaction_sheet.dart';
 import '../application/dashboard_providers.dart';
@@ -37,6 +40,9 @@ class DashboardScreen extends ConsumerWidget {
     if (created == true) {
       ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(disciplineScoreProvider);
+      ref.invalidate(nextActionProvider);
+      ref.invalidate(forecastProvider);
+      ref.invalidate(dailyTipProvider);
     }
   }
 
@@ -60,6 +66,9 @@ class DashboardScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(dashboardSummaryProvider);
             ref.invalidate(disciplineScoreProvider);
+            ref.invalidate(nextActionProvider);
+            ref.invalidate(forecastProvider);
+            ref.invalidate(dailyTipProvider);
             await Future.wait([
               ref.read(dashboardSummaryProvider.future),
               ref.read(disciplineScoreProvider.future),
@@ -104,6 +113,10 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: KoraSpacing.md),
+              const NextActionCard(),
+              const SizedBox(height: KoraSpacing.md),
+              const ForecastCard(),
               const SizedBox(height: KoraSpacing.md),
               summary.maybeWhen(
                 data: (s) => _ExpensesCard(

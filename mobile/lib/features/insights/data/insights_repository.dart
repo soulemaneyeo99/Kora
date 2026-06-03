@@ -9,7 +9,7 @@ final insightsRepositoryProvider = Provider<InsightsRepository>(
   (ref) => InsightsRepository(ref.watch(dioProvider)),
 );
 
-/// Acces aux endpoints `/insights/daily-tip` et `/insights/badges`.
+/// Acces aux endpoints insights : daily-tip, badges, next-action, forecast.
 class InsightsRepository {
   InsightsRepository(this._dio);
   final Dio _dio;
@@ -29,6 +29,24 @@ class InsightsRepository {
       return (res.data ?? [])
           .map((e) => KoraBadge.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<NextAction> fetchNextAction() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/insights/next-action');
+      return NextAction.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<EndOfMonthForecast> fetchForecast() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/insights/forecast');
+      return EndOfMonthForecast.fromJson(res.data!);
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

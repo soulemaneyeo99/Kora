@@ -10,6 +10,7 @@ import '../../notifications/application/notification_service.dart';
 import '../../notifications/data/notification_prefs.dart';
 import '../../notifications/data/notifications_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/intro_prefs.dart';
 import '../domain/kora_user.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -19,10 +20,17 @@ enum OnboardingStatus { unknown, needed, complete }
 
 /// État de session global, observé par le routeur pour rediriger.
 class AuthState {
-  const AuthState({required this.status, this.user});
+  const AuthState({
+    required this.status,
+    this.user,
+    this.introSeen = false,
+  });
 
   final AuthStatus status;
   final KoraUser? user;
+
+  /// True si l'utilisateur a deja vu les 3 slides d'intro. Charge au bootstrap.
+  final bool introSeen;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
   bool get isKnown => status != AuthStatus.unknown;
@@ -36,8 +44,12 @@ class AuthState {
         : OnboardingStatus.needed;
   }
 
-  AuthState copyWith({AuthStatus? status, KoraUser? user}) =>
-      AuthState(status: status ?? this.status, user: user ?? this.user);
+  AuthState copyWith({AuthStatus? status, KoraUser? user, bool? introSeen}) =>
+      AuthState(
+        status: status ?? this.status,
+        user: user ?? this.user,
+        introSeen: introSeen ?? this.introSeen,
+      );
 
   static const unknown = AuthState(status: AuthStatus.unknown);
 }
@@ -55,6 +67,7 @@ class AuthController extends Notifier<AuthState> {
   NotificationService get _notifService =>
       ref.read(notificationServiceProvider);
   NotificationPrefs get _notifPrefs => ref.read(notificationPrefsProvider);
+  IntroPrefs get _introPrefs => ref.read(introPrefsProvider);
 
   @override
   AuthState build() {
@@ -64,23 +77,37 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> _bootstrap() async {
+    final introSeen = await _introPrefs.isIntroSeen();
     final valid = await _tokenStore.load();
     if (!valid) {
-      state = const AuthState(status: AuthStatus.unauthenticated);
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        introSeen: introSeen,
+      );
       return;
     }
-    // Token valide : on rafraichit le profil pour decider du routing
-    // (onboarding ou home). Si le backend rejette, on logout proprement.
     try {
       final user = await _repo.fetchMe();
-      state = AuthState(status: AuthStatus.authenticated, user: user);
-      // best-effort : re-register device + reprogramme conseil quotidien
-      // a chaque demarrage (idempotent cote backend et plugin local).
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        introSeen: introSeen,
+      );
       unawaited(_postLoginHook());
     } catch (_) {
       await _tokenStore.clear();
-      state = const AuthState(status: AuthStatus.unauthenticated);
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        introSeen: introSeen,
+      );
     }
+  }
+
+  /// Marque l'intro comme vue (3 slides accomplis). Idempotent.
+  Future<void> markIntroSeen() async {
+    if (state.introSeen) return;
+    await _introPrefs.markIntroSeen();
+    state = state.copyWith(introSeen: true);
   }
 
   /// Effets de bord post-connexion : permission, register device, schedule.

@@ -1,22 +1,34 @@
 """Service insights : conseil du jour + badges (CDC F11, F19).
 
-Conseils du jour : bibliotheque locale de 30 conseils localises Cote d'Ivoire.
-Selection deterministe = hash(user_id + date_iso) % len. Pas d'aleatoire pur
-pour que le meme conseil reste afficher toute la journee, et qu'il change
-chaque jour de maniere previsible.
+Conseils du jour : bibliotheque locale de 30 conseils localises Cote d'Ivoire,
+classes par categorie (discipline / epargne / depenses / revenus / objectifs).
+
+Selection deterministe ET conditionnee :
+  - on calcule des "signaux" depuis l'etat reel du user (taux d'epargne, ratio
+    impulsif, presence d'objectifs, etc.)
+  - on en deduit la categorie de conseil la plus pertinente AUJOURD'HUI
+  - dans cette categorie, on tire un conseil deterministe via hash(user + date)
+  - fallback : si pas de signaux ou aucune categorie pertinente, on tire dans
+    toute la bibliotheque comme avant (compat preservee)
+
+Resultat : un user qui depense 80% en loisirs reçoit un conseil "depenses",
+pas le meme conseil generique qu'un user discipline. Le conseil reste stable
+sur la journee et varie par utilisateur.
 
 Badges : 8 badges Phase 1 calcules a la volee depuis les transactions, goals
 et le score discipline. Pas de table dediee : pas besoin de migration, et
 les conditions evoluent vite en debut de produit.
 """
 import hashlib
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.enums import GoalStatus, TxKind
+from app.domain.category import Category
+from app.domain.enums import CategoryKind, GoalStatus, TxKind
 from app.domain.goal import Goal
 from app.domain.transaction import Transaction
 from app.schemas.insights import Badge, DailyTip
@@ -154,13 +166,107 @@ _TIPS: list[dict[str, str]] = [
 ]
 
 
-def get_tip_of_the_day(user_id: UUID, today: date | None = None) -> DailyTip:
+# ---------------------------------------------------------------------------
+# Selection conditionnee : on calcule des "signaux" et on cible la categorie
+# de conseil la plus pertinente. Le hash garde la stabilite jour/user.
+# ---------------------------------------------------------------------------
+_IMPULSE_CATEGORIES = {"Loisirs", "Autre depense"}
+
+
+@dataclass
+class TipSignals:
+    """Signaux financiers extraits des 30 derniers jours pour cibler le tip."""
+
+    savings_rate: float       # (income - expense) / income, -1.0 a 1.0
+    impulse_ratio: float       # part loisirs/autre dans expense, 0.0 a 1.0
+    tx_count: int              # nombre de transactions sur la periode
+    income_xof: int            # total revenus periode
+    has_goals: bool            # au moins un goal actif
+    avg_goal_progress: float   # 0.0 a 100.0, moyenne des goals actifs
+
+
+def _rank_categories(signals: TipSignals) -> list[str]:
+    """Classe les categories de conseil par pertinence pour ce user.
+
+    Logique : plus un signal pose probleme, plus on cible sa categorie.
+    Retourne la liste des categories triee, du plus pertinent au moins.
+    Filtre celles dont le score est trop faible.
+    """
+    scores: dict[str, float] = {
+        "discipline": 0.0,
+        "epargne": 0.0,
+        "depenses": 0.0,
+        "revenus": 0.0,
+        "objectifs": 0.0,
+    }
+
+    if signals.tx_count < 5:
+        scores["discipline"] += 3.0
+    elif signals.tx_count < 10:
+        scores["discipline"] += 1.5
+
+    if signals.income_xof > 0:
+        if signals.savings_rate <= 0:
+            scores["epargne"] += 3.0
+        elif signals.savings_rate < 0.10:
+            scores["epargne"] += 2.0
+        elif signals.savings_rate >= 0.30:
+            scores["epargne"] += 0.5
+
+    if signals.impulse_ratio > 0.50:
+        scores["depenses"] += 3.0
+    elif signals.impulse_ratio > 0.35:
+        scores["depenses"] += 2.0
+    elif signals.impulse_ratio > 0.20:
+        scores["depenses"] += 1.0
+
+    if signals.income_xof == 0 and signals.tx_count > 0:
+        scores["revenus"] += 2.5
+
+    if not signals.has_goals:
+        scores["objectifs"] += 2.5
+    elif signals.avg_goal_progress < 25:
+        scores["objectifs"] += 1.5
+    elif signals.avg_goal_progress >= 75:
+        scores["objectifs"] += 1.0
+
+    ranked = sorted(scores.items(), key=lambda x: -x[1])
+    relevant = [cat for cat, s in ranked if s >= 0.5]
+    return relevant
+
+
+def get_tip_of_the_day(
+    user_id: UUID,
+    today: date | None = None,
+    signals: TipSignals | None = None,
+) -> DailyTip:
     """Renvoie le conseil du jour pour cet utilisateur.
 
-    Selection deterministe : SHA-256(user_id + date_iso) % len(_TIPS).
-    Garantit : meme conseil toute la journee, change demain, varie par user.
+    Si `signals` est fourni, on cible la categorie la plus pertinente avant
+    de tirer (hash deterministe sur user_id + date + categorie).
+    Sinon, fallback : tirage uniforme sur toute la bibliotheque (compat).
+
+    Garantit toujours : meme conseil sur la journee, varie par user.
     """
     today = today or date.today()
+
+    if signals is not None:
+        targets = _rank_categories(signals)
+        for target in targets:
+            pool = [(i, t) for i, t in enumerate(_TIPS) if t["category"] == target]
+            if not pool:
+                continue
+            key = f"{user_id}-{today.isoformat()}-{target}".encode()
+            digest = hashlib.sha256(key).digest()
+            idx_in_pool = int.from_bytes(digest[:4], "big") % len(pool)
+            global_idx, raw = pool[idx_in_pool]
+            return DailyTip(
+                id=global_idx,
+                title=raw["title"],
+                body=raw["body"],
+                category=raw["category"],
+            )
+
     key = f"{user_id}-{today.isoformat()}".encode()
     digest = hashlib.sha256(key).digest()
     idx = int.from_bytes(digest[:4], "big") % len(_TIPS)
@@ -170,6 +276,96 @@ def get_tip_of_the_day(user_id: UUID, today: date | None = None) -> DailyTip:
         title=raw["title"],
         body=raw["body"],
         category=raw["category"],
+    )
+
+
+async def compute_tip_signals(db: AsyncSession, user_id: UUID) -> TipSignals:
+    """Calcule les signaux financiers sur les 30 derniers jours.
+
+    Une seule passe agregee sur Transaction + une query sur Goal.
+    """
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=30)
+
+    totals = (
+        await db.execute(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Transaction.kind == TxKind.INCOME, Transaction.amount_xof),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("income"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Transaction.kind == TxKind.EXPENSE, Transaction.amount_xof),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("expense"),
+                func.count(Transaction.id).label("count"),
+            ).where(
+                Transaction.user_id == user_id,
+                Transaction.occurred_at >= start,
+                Transaction.occurred_at <= end,
+            )
+        )
+    ).one()
+
+    income = int(totals.income)
+    expense = int(totals.expense)
+    tx_count = int(totals.count)
+
+    if income > 0:
+        savings_rate = max((income - expense) / income, -1.0)
+    else:
+        savings_rate = 0.0
+
+    impulse_row = (
+        await db.execute(
+            select(func.coalesce(func.sum(Transaction.amount_xof), 0))
+            .join(Category, Category.id == Transaction.category_id, isouter=True)
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.kind == TxKind.EXPENSE,
+                Transaction.occurred_at >= start,
+                Transaction.occurred_at <= end,
+                Category.kind == CategoryKind.EXPENSE,
+                Category.name.in_(_IMPULSE_CATEGORIES),
+            )
+        )
+    ).scalar_one()
+    impulse_total = int(impulse_row)
+    impulse_ratio = (impulse_total / expense) if expense > 0 else 0.0
+
+    goals = (
+        await db.execute(
+            select(Goal).where(
+                Goal.user_id == user_id, Goal.status == GoalStatus.ACTIVE
+            )
+        )
+    ).scalars().all()
+    if goals:
+        avg_progress = sum(
+            min(100.0, 100.0 * g.current_amount_xof / g.target_amount_xof)
+            for g in goals
+            if g.target_amount_xof > 0
+        ) / len(goals)
+    else:
+        avg_progress = 0.0
+
+    return TipSignals(
+        savings_rate=savings_rate,
+        impulse_ratio=impulse_ratio,
+        tx_count=tx_count,
+        income_xof=income,
+        has_goals=bool(goals),
+        avg_goal_progress=avg_progress,
     )
 
 

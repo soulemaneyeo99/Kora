@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    settings = get_settings()
     # Seed categories systeme (idempotent).
     async with AsyncSessionLocal() as session:
         try:
@@ -29,6 +30,19 @@ async def lifespan(_app: FastAPI):
         except Exception:
             logger.exception("Echec du seed des categories systeme")
             await session.rollback()
+
+    # Seed compte demo "Awa Kone" si demande via env (KORA_AUTO_SEED=true).
+    # Idempotent : skip si deja en place. Pratique pour les plans Render
+    # free (pas d'acces shell pour lancer le script manuellement).
+    if settings.kora_auto_seed:
+        try:
+            from scripts.seed_demo import seed_demo
+
+            result = await seed_demo(force=False)
+            logger.info("Seed demo: %s", result)
+        except Exception:
+            logger.exception("Echec du seed demo Awa Kone")
+
     yield
 
 

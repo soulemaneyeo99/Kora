@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     # deployer KORA sans Firebase puis brancher quand pret.
     fcm_service_account_json: str = ""
 
+    # ---- Seed demo automatique au demarrage ------------------------------
+    # KORA_AUTO_SEED=true -> seed le compte demo "Awa Kone" au boot si pas
+    # deja seede (idempotent : skip si le user existe avec >= 10 transactions).
+    # Pratique pour les plans Render free (pas de shell). A activer une fois,
+    # puis on peut laisser ou retirer la var (no-op apres seed).
+    kora_auto_seed: bool = False
+
     # ---- CinetPay (vide = LoggingPaymentProvider en dev) -------------------
     cinetpay_api_key: str = ""
     cinetpay_site_id: str = ""

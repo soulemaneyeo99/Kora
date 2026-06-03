@@ -98,7 +98,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: KoraSpacing.xl),
             const Center(child: KoraLogo(size: 40)),
             const SizedBox(height: KoraSpacing.xs),
-            Center(child: Text('Version 0.1.4', style: KoraType.caption())),
+            Center(child: Text('Version 0.1.5', style: KoraType.caption())),
           ],
         ),
       ),
