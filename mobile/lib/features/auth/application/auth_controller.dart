@@ -73,12 +73,36 @@ class AuthController extends Notifier<AuthState> {
   AuthState build() {
     // Lance la restauration de session sans bloquer la construction.
     _bootstrap();
+
+    // GARDE-FOU ABSOLU : peu importe ce qui foire dans _bootstrap
+    // (plugin SharedPreferences qui hang, SecureStorage Keystore lent,
+    // fetchMe qui ignore son timeout), apres 12s on debloque l'UI vers
+    // /intro ou /auth. L'utilisateur n'est JAMAIS bloque sur le splash.
+    Timer(const Duration(seconds: 12), () {
+      if (state.status == AuthStatus.unknown) {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    });
+
     return AuthState.unknown;
   }
 
   Future<void> _bootstrap() async {
-    final introSeen = await _introPrefs.isIntroSeen();
-    final valid = await _tokenStore.load();
+    // On ne laisse rien bloquer le bootstrap > 10s. Les prefs et le token
+    // store sont theoriquement instantanes mais on protege contre tout
+    // plugin natif lent (Keystore HSM, MIUI permissions, etc.).
+    bool introSeen = false;
+    try {
+      introSeen = await _introPrefs
+          .isIntroSeen()
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
+    bool valid = false;
+    try {
+      valid = await _tokenStore.load().timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
     if (!valid) {
       state = AuthState(
         status: AuthStatus.unauthenticated,
@@ -86,12 +110,11 @@ class AuthController extends Notifier<AuthState> {
       );
       return;
     }
+
     try {
-      // Timeout dur : si le backend dort (Render free 30-45s) ou si la
-      // connexion est mauvaise, on ne reste pas indefiniment sur le splash.
-      // Le splash a son propre bouton "Reessayer" qui invalide le controller.
-      final user =
-          await _repo.fetchMe().timeout(const Duration(seconds: 20));
+      // Timeout court : 8s suffisent quand le backend est warm. Si Render
+      // dort, on bascule sur /intro/auth et l'utilisateur peut relancer.
+      final user = await _repo.fetchMe().timeout(const Duration(seconds: 8));
       state = AuthState(
         status: AuthStatus.authenticated,
         user: user,
@@ -100,7 +123,7 @@ class AuthController extends Notifier<AuthState> {
       unawaited(_postLoginHook());
     } on TimeoutException {
       // On garde le token : c'est probablement un cold start, pas une
-      // session expiree. L'utilisateur peut Reessayer depuis le splash.
+      // session expiree. Le user pourra retenter via /auth.
       state = AuthState(
         status: AuthStatus.unauthenticated,
         introSeen: introSeen,

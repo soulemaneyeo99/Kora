@@ -42,15 +42,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   String? get _message {
-    if (_elapsedSeconds < 3) return null;
-    if (_elapsedSeconds < 12) return 'Démarrage…';
-    if (_elapsedSeconds < 25) {
+    if (_elapsedSeconds < 2) return null;
+    if (_elapsedSeconds < 8) return 'Démarrage…';
+    if (_elapsedSeconds < 15) {
       return 'Réveil du serveur (~30s sur la version gratuite)…';
     }
-    return 'C\'est plus long que prévu. Vérifie ta connexion.';
+    return 'Ça prend plus de temps que prévu. Vérifie ta connexion.';
   }
 
-  bool get _showRetry => _elapsedSeconds >= 25;
+  bool get _showRetry => _elapsedSeconds >= 10;
 
   void _retry() {
     setState(() => _elapsedSeconds = 0);
